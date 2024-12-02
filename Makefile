@@ -5,7 +5,7 @@ COMMON.DIR=$(realpath $(BASE.DIR)/..)
 DOWNLOADS.DIR=$(COMMON.DIR)/downloads
 INSTALLED.HOST.DIR=$(COMMON.DIR)/installed.host
 
-deps: eigen.fetch eigen.build
+deps: eigen.fetch eigen.build flann.fetch flann.build
 
 EIGEN.VERSION=3.4.0
 EIGEN.ARCHIVE=eigen-$(EIGEN.VERSION).tar.gz
@@ -32,6 +32,19 @@ flann.fetch: .FORCE
 flann.build: .FORCE	
 	rm -rf $(FLANN.BUILD) && mkdir -p $(FLANN.BUILD)
 	cd $(FLANN.BUILD) && cmake -DCMAKE_INSTALL_PREFIX=$(INSTALLED.HOST.DIR) -DCMAKE_INCLUDE_PATH=$(INSTALLED.HOST.DIR)/include -DCMAKE_LIBRARY_PATH=$(INSTALLED.HOST.DIR)/lib -DBUILD_PYTHON_BINDINGS=OFF -DBUILD_MATLAB_BINDINGS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF -DBUILD_DOC=OFF $(FLANN.DIR) && make -j$(J) install
+
+# https://github.com/boostorg/boost/releases/download/boost-1.86.0/boost-1.86.0-b2-nodocs.tar.gz
+BOOST.VERSION=1.86.0
+BOOST.ARCHIVE=boost-$(BOOST.VERSION)-b2-nodocs.tar.gz
+BOOST.URL=https://github.com/boostorg/boost/releases/download/boost-$(BOOST.VERSION)/$(BOOST.ARCHIVE)
+BOOST.DIR=$(DOWNLOADS.DIR)/boost-$(BOOST.VERSION)
+BOOST.BUILD=$(DOWNLOADS.DIR)/build.boost-$(BOOST.VERSION)
+boost.fetch: .FORCE
+	rm -rf $(BOOST.DIR) && rm -f $(BOOST.ARCHIVE)
+	cd $(DOWNLOADS.DIR) && wget $(BOOST.URL) -O $(BOOST.ARCHIVE) && tar xvf $(BOOST.ARCHIVE)
+
+boost.build: .FORCE
+	cd $(BOOST.DIR) && ./bootstrap.sh --prefix=$(INSTALLED.HOST.DIR) && ./b2 stage threading=multi link=shared --without-python && ./b2 install threading=multi link=shared --without-python
 
 .FORCE:
 
