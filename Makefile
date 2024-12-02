@@ -5,11 +5,10 @@ COMMON.DIR=$(BASE.DIR)/..
 DOWNLOADS.DIR=$(COMMON.DIR)/downloads
 INSTALLED.HOST.DIR=$(COMMON.DIR)/installed.host
 
-https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz
 EIGEN.VERSION=3.4.0
-EIGEN.ARCHIVE=$(EIGEN.VERSION).tar.gz
+EIGEN.ARCHIVE=eigen-$(EIGEN.VERSION).tar.gz
 EIGEN.URL=https://gitlab.com/libeigen/eigen/-/archive/$(EIGEN.VERSION)/$(EIGEN.ARCHIVE)
-EIGEN.DIR=$(DOWNLOADS.DIR)/eigen-eigen-b9cd8366d4e8
+EIGEN.DIR=$(DOWNLOADS.DIR)/eigen-$(EIGEN.VERSION)
 EIGEN.BUILD=$(DOWNLOADS.DIR)/build.eigen
 
 eigen.fetch: .FORCE
