@@ -5,7 +5,7 @@ COMMON.DIR=$(realpath $(BASE.DIR)/..)
 DOWNLOADS.DIR=$(COMMON.DIR)/downloads
 INSTALLED.HOST.DIR=$(COMMON.DIR)/installed.host
 
-deps: eigen.fetch eigen.build flann.fetch flann.build
+deps: eigen.fetch eigen.build flann.fetch flann.build boost.fetch boost.build
 
 EIGEN.VERSION=3.4.0
 EIGEN.ARCHIVE=eigen-$(EIGEN.VERSION).tar.gz
@@ -45,6 +45,19 @@ boost.fetch: .FORCE
 
 boost.build: .FORCE
 	cd $(BOOST.DIR) && ./bootstrap.sh --prefix=$(INSTALLED.HOST.DIR) && ./b2 stage threading=multi link=shared --without-python && ./b2 install threading=multi link=shared --without-python
+
+VTK.VERSION=9.4.0
+VTK.DIR=$(DOWNLOADS.DIR)/VTK-$(VTK.VERSION)
+VTK.BUILD=$(DOWNLOADS.DIR)/build.vtk
+VTK.ARCHIVE=VTK-$(VTK.VERSION).tar.gz
+VTK.URL=https://www.vtk.org/files/release/9.4/$(VTK.ARCHIVE)
+vtk.fetch:. .FORCE
+	rm -rf $(DOWNLOADS.DIR)/$(VTK.ARCHIVE) && rm -rf $(VTK.DIR) && mkdir -p $(DOWNLOADS.DIR)
+	cd $(DOWNLOADS.DIR) && wget $(VTK.URL) && tar xf $(VTK.ARCHIVE)
+
+vtk.build: .FORCE
+	rm -rf $(VTK.BUILD) && mkdir -p $(VTK.BUILD)
+	cd $(VTK.BUILD) && cmake -DCMAKE_INSTALL_PREFIX=$(INSTALLED.HOST.DIR) -DCMAKE_PREFIX_PATH=$(INSTALLED.HOST.DIR) -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DVTK_LEGACY_SILENT=ON -DBOOST_ROOT=$(INSTALLED.HOST.DIR) -DBOOST_LIBRARY_DIR=$(INSTALLED.HOST.DIR)/lib $(VTK.DIR) && make -j8 install
 
 .FORCE:
 
