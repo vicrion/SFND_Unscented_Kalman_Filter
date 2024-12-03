@@ -12,6 +12,10 @@ build: .FORCE
 	rm -rf $(BUILD.DIR) && mkdir -p $(BUILD.DIR)
 	cd $(BUILD.DIR) && cmake $(BASE.DIR) -DCMAKE_PREFIX_PATH=$(INSTALLED.HOST.DIR) -DCMAKE_BUILD_TYPE=Debug && make
 
+BIN.TEST=$(BUILD.DIR)/ukf_highway
+run: .FORCE
+	export LD_LIBRARY_PATH=$(INSTALLED.HOST.DIR)/lib && $(BIN.TEST)
+
 EIGEN.VERSION=3.4.0
 EIGEN.ARCHIVE=eigen-$(EIGEN.VERSION).tar.gz
 EIGEN.URL=https://gitlab.com/libeigen/eigen/-/archive/$(EIGEN.VERSION)/$(EIGEN.ARCHIVE)
