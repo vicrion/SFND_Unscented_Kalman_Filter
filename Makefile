@@ -7,6 +7,11 @@ INSTALLED.HOST.DIR=$(COMMON.DIR)/installed.host
 
 deps: eigen flann boost vtk pcl
 
+BUILD.DIR=$(BASE.DIR)/build_mk
+build: .FORCE
+	rm -rf $(BUILD.DIR) && mkdir -p $(BUILD.DIR)
+	cd $(BUILD.DIR) && cmake $(BASE.DIR) -DCMAKE_PREFIX_PATH=$(INSTALLED.HOST.DIR) -DCMAKE_BUILD_TYPE=Debug && make
+
 EIGEN.VERSION=3.4.0
 EIGEN.ARCHIVE=eigen-$(EIGEN.VERSION).tar.gz
 EIGEN.URL=https://gitlab.com/libeigen/eigen/-/archive/$(EIGEN.VERSION)/$(EIGEN.ARCHIVE)
@@ -64,7 +69,7 @@ vtk.build: .FORCE
 	cd $(VTK.BUILD) && cmake -DCMAKE_INSTALL_PREFIX=$(INSTALLED.HOST.DIR) -DCMAKE_PREFIX_PATH=$(INSTALLED.HOST.DIR) -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DVTK_LEGACY_SILENT=ON -DBOOST_ROOT=$(INSTALLED.HOST.DIR) -DBOOST_LIBRARY_DIR=$(INSTALLED.HOST.DIR)/lib $(VTK.DIR) && make -j8 install
 
 # https://github.com/PointCloudLibrary/pcl/releases/download/pcl-1.14.1/source.tar.gz
-PCL.VERSION=1.14.0
+PCL.VERSION=1.14.1
 PCL.DIR=$(DOWNLOADS.DIR)/pcl-$(PCL.VERSION)
 PCL.BUILD=$(DOWNLOADS.DIR)/build.pcl-$(PCL.VERSION)
 PCL.ARCHIVE=pcl-$(PCL.VERSION).tar.gz
@@ -75,8 +80,21 @@ pcl.fetch: .FORCE
 	cd $(DOWNLOADS.DIR) && wget $(PCL.URL) -O $(PCL.ARCHIVE) && tar xf $(PCL.ARCHIVE) -C $(PCL.DIR)
 
 pcl.build: .FORCE
-	mkdir -p $(PCL.BUILD)
-	cd $(PCL.BUILD) && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$(INSTALLED.HOST.DIR) -DCMAKE_INSTALL_PREFIX=$(INSTALLED.HOST.DIR) -DVTK_DIR=$(INSTALLED.HOST.DIR) -DBUILD_io=OFF $(PCL.DIR)/pcl && make -j8 install
+	rm -rf $(PCL.BUILD) && mkdir -p $(PCL.BUILD)
+	cd $(PCL.BUILD) && \
+	cmake $(PCL.DIR)/pcl \
+	  -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 \
+      -DCMAKE_PREFIX_PATH="$(INSTALLED.HOST.DIR);/usr;/usr/local" \
+      -DCMAKE_INSTALL_PREFIX=$(INSTALLED.HOST.DIR) \
+      -DVTK_DIR=$(INSTALLED.HOST.DIR) \
+	  -DGLUT_INCLUDE_DIR=/usr/include \
+	  -DGLUT_glut_LIBRARY=/usr/lib/x86_64-linux-gnu/libglut.so \
+	  -DOPENGL_INCLUDE_DIR=/usr/include \
+	  -DOPENGL_gl_LIBRARY=/usr/lib/x86_64-linux-gnu/libGL.so \
+	  -DOPENGL_glu_LIBRARY=/usr/lib/x86_64-linux-gnu/libGLU.so \
+      -DBUILD_visualization=ON \
+      -DBUILD_io=ON \
+	  && make -j8 install
 
 .FORCE:
 
