@@ -1,0 +1,14 @@
+{
+    "cmake.sourceDirectory": "${workspaceFolder}",
+    "cmake.buildDirectory": "${workspaceFolder}/build_vscode",
+    "cmake.installPrefix": "${workspaceFolder}/../installed.host",
+    "cmake.configureArgs": [
+        "-DCMAKE_BUILD_TYPE=Debug",
+        "-DCMAKE_PREFIX_PATH=${workspaceFolder}/../installed.host"
+    ],
+    "cmake.debugConfig": {
+        "args": [
+        ]
+    },
+    "C_Cpp.default.compilerPath": "/usr/bin/g++-12",
+}
