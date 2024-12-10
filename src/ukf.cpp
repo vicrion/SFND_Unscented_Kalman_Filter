@@ -39,7 +39,7 @@ UKF::UKF()
 
 UKF::~UKF() {}
 
-void UKF::ProcessMeasurement(MeasurementPackage meas_package) 
+void UKF::step(MeasurementPackage meas_package) 
 {
   if (!is_initialized_)
   {
@@ -82,17 +82,24 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package)
   auto deltaT = static_cast<double>((meas_package.timestamp_ - timestampPrev) / 1e6);
   timestampPrev = meas_package.timestamp_;
 
-  Prediction(deltaT);
+  predict(deltaT);
 
   if (meas_package.LASER){
-    UpdateLidar(meas_package);
+    updateLidar(meas_package);
   }
   else {
-    UpdateRadar(meas_package);
+    updateRadar(meas_package);
   }
 }
 
-void UKF::Prediction(double delta_t) {
+Eigen::VectorXd UKF::getState() const
+{
+    return x_;
+}
+
+void UKF::predict(double delta_t) 
+{
+  std::cout << "Predict.\n";
   /**
    * TODO: Complete this function! Estimate the object's location. 
    * Modify the state vector, x_. Predict sigma points, the state, 
@@ -100,7 +107,7 @@ void UKF::Prediction(double delta_t) {
    */
 }
 
-void UKF::UpdateLidar(MeasurementPackage meas_package) {
+void UKF::updateLidar(MeasurementPackage meas_package) {
   /**
    * TODO: Complete this function! Use lidar data to update the belief 
    * about the object's position. Modify the state vector, x_, and 
@@ -113,7 +120,7 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   // calculate lidar NIS
 }
 
-void UKF::UpdateRadar(MeasurementPackage meas_package) {
+void UKF::updateRadar(MeasurementPackage meas_package) {
   /**
    * TODO: Complete this function! Use radar data to update the belief 
    * about the object's position. Modify the state vector, x_, and 
