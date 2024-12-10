@@ -6,14 +6,7 @@
 
 class UKF {
  public:
-  /**
-   * Constructor
-   */
   UKF();
-
-  /**
-   * Destructor
-   */
   virtual ~UKF();
 
   /**
@@ -51,6 +44,12 @@ class UKF {
   // if this is false, radar measurements will be ignored (except for init)
   bool use_radar_;
 
+  // State dimension
+  int n_x_;
+
+  // Augmented state dimension
+  int n_aug_;
+
   // state vector: [pos1 pos2 vel_abs yaw_angle yaw_rate] in SI units and rad
   Eigen::VectorXd x_;
 
@@ -62,6 +61,7 @@ class UKF {
 
   // time when the state is true, in us
   long long time_us_;
+  long timestampPrev;
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
   double std_a_;
@@ -87,14 +87,8 @@ class UKF {
   // Weights of sigma points
   Eigen::VectorXd weights_;
 
-  // State dimension
-  int n_x_;
-
-  // Augmented state dimension
-  int n_aug_;
-
   // Sigma point spreading parameter
-  double lambda_;
+  int lambda_;
 };
 
 #endif  // UKF_H
