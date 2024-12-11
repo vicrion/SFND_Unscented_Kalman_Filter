@@ -10,10 +10,11 @@ using Eigen::VectorXd;
 /**
  * Initializes Unscented Kalman filter
  */
-UKF::UKF() 
+UKF::UKF(bool useLidar, bool useRadar, bool debug) 
   : isInitialized{false}
-  , useLaser{true}
-  , useRadar{true}
+  , useLaser{useLidar}
+  , useRadar{useRadar}
+  , debug{debug}
   
   , nX{5}
   , nX_aug{7}
@@ -150,8 +151,11 @@ void UKF::updateLidar(MeasurementPackage meas_package)
   P = P - K * S * K.transpose();
 
   // calculate lidar NIS
-  double NIS = z_diff.transpose() * S.inverse() * z_diff;
-  std::cout << "Lidar NIS: " << NIS << std::endl;
+  if (S.determinant() > 1e-6) {
+    double NIS = z_diff.transpose() * S.inverse() * z_diff;
+    std::cout << "Lidar NIS: " << NIS << std::endl;
+  }
+  
 }
 
 void UKF::updateRadar(MeasurementPackage meas_package) 
@@ -229,8 +233,10 @@ void UKF::updateRadar(MeasurementPackage meas_package)
   P = P - K*S*K.transpose();
 
   // calculate radar NIS
-  double NIS = z_diff.transpose() * S.inverse() * z_diff;
-  std::cout << "Radar NIS: " << NIS << std::endl;
+  if (S.determinant() > 1e-6) {
+    double NIS = z_diff.transpose() * S.inverse() * z_diff;
+    std::cout << "Radar NIS: " << NIS << std::endl;
+  }
 }
 
 Eigen::MatrixXd UKF::augmentSigmaPoints()
