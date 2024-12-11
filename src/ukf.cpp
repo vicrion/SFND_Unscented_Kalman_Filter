@@ -146,13 +146,14 @@ Eigen::MatrixXd UKF::augmentSigmaPoints()
 
   // extract sigma points using augmentation
   Eigen::MatrixXd PAug_sqrt = PAug.llt().matrixL(); // square root of augmented P
-  auto sigmaAug = Eigen::MatrixXd(nXAug, 2 * nXAug + 1); 
+  auto sigmaAug = Eigen::MatrixXd(nXAug, 2*nXAug+1); 
   sigmaAug.col(0) = xAug;
-  for (int i = 0; i < nXAug; ++i) {
-    sigmaAug.col(i+1)     = x + sqrt(lambda+nXAug) * PAug_sqrt.col(i);
-    sigmaAug.col(i+1+nXAug) = x - sqrt(lambda+nXAug) * PAug_sqrt.col(i);
+  for (int i=1; i<nXAug; ++i) {
+    sigmaAug.col(i) = xAug + std::sqrt(lambda+nXAug) * PAug_sqrt.col(i);
+    sigmaAug.col(i+nXAug) = xAug - std::sqrt(lambda+nXAug) * PAug_sqrt.col(i);
   }
-    return sigmaAug;
+  
+  return sigmaAug;
 }
 
 Eigen::MatrixXd UKF::predictSigmaPoints(const Eigen::MatrixXd &sigmaAug, const double delta_t)
