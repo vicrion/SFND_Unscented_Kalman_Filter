@@ -17,10 +17,10 @@ UKF::UKF()
   
   , nX{5}
   , nX_aug{7}
-  , LAMBDA{3 - nX_aug}
+  , lambda{3 - nX_aug}
   , x{VectorXd(nX)} // initial state vector
   , P{MatrixXd::Ones(nX, nX)} // initial covariance matrix
-  , weights{Eigen::VectorXd(2*nX_aug+1)}
+  , weights{Eigen::VectorXd(2*nX_aug+1)} // const
 
   , timestampPrev{0}
 
@@ -33,12 +33,12 @@ UKF::UKF()
   , std_radarDoppler{0.3} // const, Radar measurement noise standard deviation radius change in m/s
 {
   // P.diagonal() << 1, 1, 1, 1, 1; // std_accel*std_accel, std_yawDDot*std_yawDDot
-  
+
   // set weights
-  double weight_0 = LAMBDA/(LAMBDA+nX_aug);
+  double weight_0 = lambda/(lambda+nX_aug);
   weights(0) = weight_0;
   for (int i=1; i<2*nX_aug+1; ++i) {  // 2n+1 weights
-    double weight = 0.5/(nX_aug+LAMBDA);
+    double weight = 0.5/(nX_aug+lambda);
     weights(i) = weight;
   }
 }
@@ -86,9 +86,9 @@ Eigen::VectorXd UKF::getState() const
 void UKF::predict(double delta_t) 
 {
   // predict: x and P using augmentation
-  auto sigmaAug = augmentSigmaPoints();
-  auto sigmaPred = predictSigmaPoints(sigmaAug, delta_t);
-  predictMeanCovariance(sigmaPred);
+  auto Xsigma_aug = augmentSigmaPoints();
+  auto Xsigma_pred = predictSigmaPoints(Xsigma_aug, delta_t);
+  predictMeanCovariance(Xsigma_pred);
 }
 
 void UKF::updateLidar(MeasurementPackage meas_package) {
@@ -121,28 +121,28 @@ void UKF::updateRadar(MeasurementPackage meas_package) {
 Eigen::MatrixXd UKF::augmentSigmaPoints()
 {
   // augment x
-  auto xAug = Eigen::VectorXd(nX_aug);
-  xAug.head(nX_aug-2) = x; 
-  xAug(nX_aug-2) = 0; 
-  xAug(nX_aug-1) = 0; // copy state to augmented vector
+  auto x_aug = Eigen::VectorXd(nX_aug);
+  x_aug.head(nX_aug-2) = x; 
+  x_aug(nX_aug-2) = 0; 
+  x_aug(nX_aug-1) = 0; // copy state to augmented vector
 
   // augment P
-  auto PAug = Eigen::MatrixXd(nX_aug, nX_aug);
-  PAug.fill(0.0);
-  PAug.topLeftCorner(nX_aug-2,nX_aug-2) = P;
-  PAug(nX_aug-2,nX_aug-2) = std_accel*std_accel;
-  PAug(nX_aug-1,nX_aug-1) = std_yawDDot*std_yawDDot;
+  auto P_aug = Eigen::MatrixXd(nX_aug, nX_aug);
+  P_aug.fill(0.0);
+  P_aug.topLeftCorner(nX_aug-2,nX_aug-2) = P;
+  P_aug(nX_aug-2,nX_aug-2) = std_accel*std_accel;
+  P_aug(nX_aug-1,nX_aug-1) = std_yawDDot*std_yawDDot;
 
   // extract sigma points using augmentation
-  Eigen::MatrixXd PAug_sqrt = PAug.llt().matrixL(); // square root of augmented P
-  auto sigmaAug = Eigen::MatrixXd(nX_aug, 2*nX_aug+1); 
-  sigmaAug.col(0) = xAug;
+  Eigen::MatrixXd P_aug_sqrt = P_aug.llt().matrixL(); // square root of augmented P
+  auto Xsigma_aug = Eigen::MatrixXd(nX_aug, 2*nX_aug+1); 
+  Xsigma_aug.col(0) = x_aug;
   for (int i=1; i<nX_aug; ++i) {
-    sigmaAug.col(i) = xAug + std::sqrt(LAMBDA+nX_aug) * PAug_sqrt.col(i);
-    sigmaAug.col(i+nX_aug) = xAug - std::sqrt(LAMBDA+nX_aug) * PAug_sqrt.col(i);
+    Xsigma_aug.col(i) = x_aug + std::sqrt(lambda+nX_aug) * P_aug_sqrt.col(i);
+    Xsigma_aug.col(i+nX_aug) = x_aug - std::sqrt(lambda+nX_aug) * P_aug_sqrt.col(i);
   }
   
-  return sigmaAug;
+  return Xsigma_aug;
 }
 
 void UKF::initialize(const MeasurementPackage& meas_package)
@@ -182,7 +182,7 @@ void UKF::initialize(const MeasurementPackage& meas_package)
   timestampPrev = meas_package.timestamp_;
 }
 
-Eigen::MatrixXd UKF::predictSigmaPoints(const Eigen::MatrixXd &sigmaAug, const double delta_t)
+Eigen::MatrixXd UKF::predictSigmaPoints(const Eigen::MatrixXd &Xsigma_aug, const double delta_t)
 {
   // create matrix with predicted sigma points as columns
   auto Xsig_pred = Eigen::MatrixXd(nX, 2 * nX_aug + 1);
@@ -190,13 +190,13 @@ Eigen::MatrixXd UKF::predictSigmaPoints(const Eigen::MatrixXd &sigmaAug, const d
   // predict sigma points
   for (int i = 0; i < 2*nX_aug+1; ++i) {
     // extract values for better readability
-    double p_x = sigmaAug(0,i);
-    double p_y = sigmaAug(1,i);
-    double v = sigmaAug(2,i);
-    double yaw = sigmaAug(3,i);
-    double yawd = sigmaAug(4,i);
-    double nu_a = sigmaAug(5,i);
-    double nu_yawdd = sigmaAug(6,i);
+    double p_x = Xsigma_aug(0,i);
+    double p_y = Xsigma_aug(1,i);
+    double v = Xsigma_aug(2,i);
+    double yaw = Xsigma_aug(3,i);
+    double yawd = Xsigma_aug(4,i);
+    double nu_a = Xsigma_aug(5,i);
+    double nu_yawdd = Xsigma_aug(6,i);
 
     // predicted state values
     double px_p, py_p;

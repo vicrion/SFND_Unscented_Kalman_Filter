@@ -51,7 +51,7 @@ private:
 
   int nX; // State dimension
   int nX_aug; // Augmented state dimension
-  int LAMBDA; // Sigma point spreading parameter
+  int lambda; // Sigma point spreading parameter
 
   Eigen::VectorXd x; // state vector: [pos1 pos2 vel_abs yaw_angle yaw_rate] in SI units and rad
   Eigen::MatrixXd P; // state covariance matrix 
