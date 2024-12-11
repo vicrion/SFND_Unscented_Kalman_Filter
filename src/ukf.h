@@ -1,6 +1,8 @@
 #ifndef UKF_H
 #define UKF_H
 
+#include <tuple>
+
 #include "Eigen/Dense"
 #include "measurement_package.h"
 
@@ -38,19 +40,20 @@ protected:
   void updateRadar(MeasurementPackage meas_package);
 
 private:
+  Eigen::MatrixXd augmentSigmaPoints();
+  Eigen::MatrixXd predictSigmaPoints(const Eigen::MatrixXd& sigmaAug, const double delta_t);
+  void predictMeanCovariance(const Eigen::MatrixXd& sigmaPred); // update internal x, P
+
   bool isInitialized; // initially set to false, set to true in first call of ProcessMeasurement
   bool useLaser; // if this is false, laser measurements will be ignored (except for init)
   bool useRadar; // if this is false, radar measurements will be ignored (except for init)
 
   int nX; // State dimension
-  int nX_aug; // Augmented state dimension
+  int nXAug; // Augmented state dimension
   int lambda; // Sigma point spreading parameter
 
   Eigen::VectorXd x; // state vector: [pos1 pos2 vel_abs yaw_angle yaw_rate] in SI units and rad
-  Eigen::MatrixXd P; // state covariance matrix
-  Eigen::MatrixXd XSigPred; // predicted sigma points matrix
-  Eigen::VectorXd weights; // Weights of sigma points
-  
+  Eigen::MatrixXd P; // state covariance matrix  
 
   long long time_us; // time when the state is true, in us
   long timestampPrev;
