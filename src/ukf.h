@@ -24,7 +24,7 @@ class UKF {
    */
   void predict(double delta_t);
 
-private:
+protected:
   /**
    * Updates the state and the state covariance matrix using a laser measurement
    * @param meas_package The measurement at k+1
@@ -37,61 +37,33 @@ private:
    */
   void updateRadar(MeasurementPackage meas_package);
 
+private:
+  bool isInitialized; // initially set to false, set to true in first call of ProcessMeasurement
+  bool useLaser; // if this is false, laser measurements will be ignored (except for init)
+  bool useRadar; // if this is false, radar measurements will be ignored (except for init)
 
-  // initially set to false, set to true in first call of ProcessMeasurement
-  bool is_initialized_;
+  int nX; // State dimension
+  int nX_aug; // Augmented state dimension
+  int lambda; // Sigma point spreading parameter
 
-  // if this is false, laser measurements will be ignored (except for init)
-  bool use_laser_;
+  Eigen::VectorXd x; // state vector: [pos1 pos2 vel_abs yaw_angle yaw_rate] in SI units and rad
+  Eigen::MatrixXd P; // state covariance matrix
+  Eigen::MatrixXd XSigPred; // predicted sigma points matrix
+  Eigen::VectorXd weights; // Weights of sigma points
+  
 
-  // if this is false, radar measurements will be ignored (except for init)
-  bool use_radar_;
-
-  // State dimension
-  int n_x_;
-
-  // Augmented state dimension
-  int n_aug_;
-
-  // state vector: [pos1 pos2 vel_abs yaw_angle yaw_rate] in SI units and rad
-  Eigen::VectorXd x_;
-
-  // state covariance matrix
-  Eigen::MatrixXd P_;
-
-  // predicted sigma points matrix
-  Eigen::MatrixXd Xsig_pred_;
-
-  // time when the state is true, in us
-  long long time_us_;
+  long long time_us; // time when the state is true, in us
   long timestampPrev;
 
-  // Process noise standard deviation longitudinal acceleration in m/s^2
-  double std_a_;
+  double std_accel; // Process noise standard deviation longitudinal acceleration in m/s^2
+  double std_yawDDot; // Process noise standard deviation yaw acceleration in rad/s^2
 
-  // Process noise standard deviation yaw acceleration in rad/s^2
-  double std_yawdd_;
+  double std_laserPx; // Laser measurement noise standard deviation position1 in m
+  double std_laserPy; // Laser measurement noise standard deviation position2 in m
 
-  // Laser measurement noise standard deviation position1 in m
-  double std_laspx_;
-
-  // Laser measurement noise standard deviation position2 in m
-  double std_laspy_;
-
-  // Radar measurement noise standard deviation radius in m
-  double std_radr_;
-
-  // Radar measurement noise standard deviation angle in rad
-  double std_radphi_;
-
-  // Radar measurement noise standard deviation radius change in m/s
-  double std_radrd_ ;
-
-  // Weights of sigma points
-  Eigen::VectorXd weights_;
-
-  // Sigma point spreading parameter
-  int lambda_;
+  double std_radarRange; // Radar measurement noise standard deviation radius in m
+  double std_radarPhi; // Radar measurement noise standard deviation angle in rad
+  double std_radarDoppler; // Radar measurement noise standard deviation radius change in m/s
 };
 
 #endif  // UKF_H
