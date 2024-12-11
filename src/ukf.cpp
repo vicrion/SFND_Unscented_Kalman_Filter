@@ -81,11 +81,23 @@ void UKF::step(MeasurementPackage meas_package)
 
   // UKF: predict and update
   predict(deltaT);
-  if (meas_package.LASER){
+  switch (meas_package.sensor_type_)
+  {
+  case MeasurementPackage::LASER:
+  {
     updateLidar(meas_package);
+    break;
   }
-  else {
+  case MeasurementPackage::RADAR:
+  {
     updateRadar(meas_package);
+    break;
+  }
+  default:
+  {
+    std::cerr << "Unknown package type, cannot run update step.\n";
+    break;
+  }
   }
 }
 
@@ -96,12 +108,7 @@ Eigen::VectorXd UKF::getState() const
 
 void UKF::predict(double delta_t) 
 {
-  /**
-   * TODO: Complete this function! Estimate the object's location. 
-   * Modify the state vector, x. Predict sigma points, the state, 
-   * and the state covariance matrix.
-   */
-  // predict: x, sigma, P
+  // predict: x and P using augmentation
   auto sigmaAug = augmentSigmaPoints();
   auto sigmaPred = predictSigmaPoints(sigmaAug, delta_t);
   predictMeanCovariance(sigmaPred);
