@@ -92,17 +92,66 @@ void UKF::predict(double delta_t)
   predictMeanCovariance();
 }
 
-void UKF::updateLidar(MeasurementPackage meas_package) {
-  /**
-   * TODO: Complete this function! Use lidar data to update the belief 
-   * about the object's position. Modify the state vector, x, and 
-   * covariance, P_.
-   * You can also calculate the lidar NIS, if desired.
-   */
-
+void UKF::updateLidar(MeasurementPackage meas_package) 
+{
   // Belief about object's position: modify state vector and covariance matrix
+  int n_z = meas_package.raw_measurements_.size(); // 2
+  auto z = meas_package.raw_measurements_;
+  Eigen::MatrixXd Zsig = Eigen::MatrixXd(n_z, 2 * nX_aug + 1);
+  for (int i = 0; i < 2 * nX_aug + 1; ++i)
+  {
+    Zsig(0, i) = Xsigma_pred(0, i); // px
+    Zsig(1, i) = Xsigma_pred(1, i); // py
+  }
+  Eigen::VectorXd z_pred = Eigen::VectorXd(n_z);
+  z_pred.fill(0.0);
+  for (int i = 0; i < 2 * nX_aug + 1; ++i)
+  {
+    z_pred = z_pred + weights(i) * Zsig.col(i);
+  }
+
+  Eigen::MatrixXd S = Eigen::MatrixXd(n_z, n_z);
+  S.fill(0.0);
+  for (int i = 0; i < 2 * nX_aug + 1; ++i)
+  {
+    // Residual
+    Eigen::VectorXd z_diff = Zsig.col(i) - z_pred;
+
+    S = S + weights(i) * z_diff * z_diff.transpose();
+  }
+
+  Eigen::MatrixXd R = Eigen::MatrixXd(n_z, n_z);
+  R << std_laserPx * std_laserPx, 0,
+      0, std_laserPy * std_laserPy;
+  S = S + R;
+
+  // Cross-correlation matrix Tc
+  Eigen::MatrixXd Tc = Eigen::MatrixXd(nX, n_z);
+  Tc.fill(0.0);
+  for (int i = 0; i < 2 * nX_aug + 1; ++i)
+  {
+    // Residual
+    Eigen::VectorXd z_diff = Zsig.col(i) - z_pred;
+
+    // State difference
+    Eigen::VectorXd x_diff = Xsigma_pred.col(i) - x;
+
+    Tc = Tc + weights(i) * x_diff * z_diff.transpose();
+  }
+
+  // Kalman gain K
+  Eigen::MatrixXd K = Tc * S.inverse();
+
+  // Residual
+  Eigen::VectorXd z_diff = z - z_pred;
+
+  // Update state mean and covariance matrix
+  x = x + K * z_diff;
+  P = P - K * S * K.transpose();
 
   // calculate lidar NIS
+  double NIS = z_diff.transpose() * S.inverse() * z_diff;
+  std::cout << "Lidar NIS: " << NIS << std::endl;
 }
 
 void UKF::updateRadar(MeasurementPackage meas_package) 
@@ -141,9 +190,8 @@ void UKF::updateRadar(MeasurementPackage meas_package)
     VectorXd z_diff = Zsig.col(i) - z_pred;
 
     // angle normalization
-    while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
-    while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
-
+    z_diff(1) = wraptopi(z_diff(1));
+    
     S = S + weights(i) * z_diff * z_diff.transpose();
   }
 
@@ -162,14 +210,12 @@ void UKF::updateRadar(MeasurementPackage meas_package)
     // residual
     VectorXd z_diff = Zsig.col(i) - z_pred;
     // angle normalization
-    while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
-    while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
+    z_diff(1) = wraptopi(z_diff(1));
 
     // state difference
     VectorXd x_diff = Xsigma_pred.col(i) - x;
     // angle normalization
-    while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
-    while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
+    x_diff(3) = wraptopi(x_diff(3));
 
     Tc = Tc + weights(i) * x_diff * z_diff.transpose();
   }
@@ -182,7 +228,9 @@ void UKF::updateRadar(MeasurementPackage meas_package)
   x = x + K * z_diff;
   P = P - K*S*K.transpose();
 
-  // TODO: calculate radar NIS
+  // calculate radar NIS
+  double NIS = z_diff.transpose() * S.inverse() * z_diff;
+  std::cout << "Radar NIS: " << NIS << std::endl;
 }
 
 Eigen::MatrixXd UKF::augmentSigmaPoints()
