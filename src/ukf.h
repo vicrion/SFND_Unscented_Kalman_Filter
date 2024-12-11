@@ -40,6 +40,7 @@ protected:
   void updateRadar(MeasurementPackage meas_package);
 
 private:
+  void initialize(const MeasurementPackage& meas_package);
   Eigen::MatrixXd augmentSigmaPoints();
   Eigen::MatrixXd predictSigmaPoints(const Eigen::MatrixXd& sigmaAug, const double delta_t);
   void predictMeanCovariance(const Eigen::MatrixXd& sigmaPred); // update internal x, P
@@ -49,11 +50,12 @@ private:
   bool useRadar; // if this is false, radar measurements will be ignored (except for init)
 
   int nX; // State dimension
-  int nXAug; // Augmented state dimension
-  int lambda; // Sigma point spreading parameter
+  int nX_aug; // Augmented state dimension
+  int LAMBDA; // Sigma point spreading parameter
 
   Eigen::VectorXd x; // state vector: [pos1 pos2 vel_abs yaw_angle yaw_rate] in SI units and rad
-  Eigen::MatrixXd P; // state covariance matrix  
+  Eigen::MatrixXd P; // state covariance matrix 
+  Eigen::VectorXd weights;  
 
   long long time_us; // time when the state is true, in us
   long timestampPrev;

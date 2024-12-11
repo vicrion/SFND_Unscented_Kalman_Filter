@@ -16,10 +16,11 @@ UKF::UKF()
   , useRadar{true}
   
   , nX{5}
-  , nXAug{7}
-  , lambda{3 - nX}
+  , nX_aug{7}
+  , LAMBDA{3 - nX_aug}
   , x{VectorXd(nX)} // initial state vector
   , P{MatrixXd::Ones(nX, nX)} // initial covariance matrix
+  , weights{Eigen::VectorXd(2*nX_aug+1)}
 
   , timestampPrev{0}
 
@@ -32,47 +33,23 @@ UKF::UKF()
   , std_radarDoppler{0.3} // const, Radar measurement noise standard deviation radius change in m/s
 {
   // P.diagonal() << 1, 1, 1, 1, 1; // std_accel*std_accel, std_yawDDot*std_yawDDot
+  
+  // set weights
+  double weight_0 = LAMBDA/(LAMBDA+nX_aug);
+  weights(0) = weight_0;
+  for (int i=1; i<2*nX_aug+1; ++i) {  // 2n+1 weights
+    double weight = 0.5/(nX_aug+LAMBDA);
+    weights(i) = weight;
+  }
 }
 
 UKF::~UKF() {}
 
 void UKF::step(MeasurementPackage meas_package) 
 {
-  if (!isInitialized)
-  {
-    switch (meas_package.sensor_type_)
-    {
-      // initialize state's position using direct measurements
-      // leave unitialized the rest (0): velocity, yaw angle, yaw rate
-    case MeasurementPackage::LASER:
-    {
-      std::cout << "State will be initialized using LIDAR measurement.\n";
-      assert(meas_package.raw_measurements_.size() == 2);
-      x(0) = meas_package.raw_measurements_(0);
-      x(1) = meas_package.raw_measurements_(1);
-
-      P(0,0) = std_laserPx*std_laserPx;
-      P(1,1) = std_laserPy*std_laserPy;
-      break;
-    }
-
-    case MeasurementPackage::RADAR:
-    {
-      std::cout << "State will be initialized using RADAR measurement.\n";
-      assert(meas_package.raw_measurements_.size() == 3);
-      auto range = meas_package.raw_measurements_(0);
-      auto phi = meas_package.raw_measurements_(1);
-      auto rhoDot = meas_package.raw_measurements_(2);
-      x(0) = range * std::cos(phi);
-      x(1) = range * std::sin(phi);
-      break;
-    } 
-    default:
-      break;
-    }
-
-    isInitialized = true;
-    timestampPrev = meas_package.timestamp_;
+  // UKF: initialize x, P using package data and std values
+  if (!isInitialized){
+    initialize(meas_package);
     return;
   }
 
@@ -134,42 +111,84 @@ void UKF::updateRadar(MeasurementPackage meas_package) {
    * covariance, P_.
    * You can also calculate the radar NIS, if desired.
    */
+  int n_z = meas_package.raw_measurements_.size(); // 3
+
+  // transform sigma into radar coordinate system
+  // calculate mean of transformed points
+  // calculate measurement covariance S
 }
 
 Eigen::MatrixXd UKF::augmentSigmaPoints()
 {
   // augment x
-  auto xAug = Eigen::VectorXd(nXAug);
-  xAug.head(nXAug-2) = x; 
-  xAug(nXAug-2) = 0; 
-  xAug(nXAug-1) = 0; // copy state to augmented vector
+  auto xAug = Eigen::VectorXd(nX_aug);
+  xAug.head(nX_aug-2) = x; 
+  xAug(nX_aug-2) = 0; 
+  xAug(nX_aug-1) = 0; // copy state to augmented vector
 
   // augment P
-  auto PAug = Eigen::MatrixXd(nXAug, nXAug);
+  auto PAug = Eigen::MatrixXd(nX_aug, nX_aug);
   PAug.fill(0.0);
-  PAug.topLeftCorner(nXAug-2,nXAug-2) = P;
-  PAug(nXAug-2,nXAug-2) = std_accel*std_accel;
-  PAug(nXAug-1,nXAug-1) = std_yawDDot*std_yawDDot;
+  PAug.topLeftCorner(nX_aug-2,nX_aug-2) = P;
+  PAug(nX_aug-2,nX_aug-2) = std_accel*std_accel;
+  PAug(nX_aug-1,nX_aug-1) = std_yawDDot*std_yawDDot;
 
   // extract sigma points using augmentation
   Eigen::MatrixXd PAug_sqrt = PAug.llt().matrixL(); // square root of augmented P
-  auto sigmaAug = Eigen::MatrixXd(nXAug, 2*nXAug+1); 
+  auto sigmaAug = Eigen::MatrixXd(nX_aug, 2*nX_aug+1); 
   sigmaAug.col(0) = xAug;
-  for (int i=1; i<nXAug; ++i) {
-    sigmaAug.col(i) = xAug + std::sqrt(lambda+nXAug) * PAug_sqrt.col(i);
-    sigmaAug.col(i+nXAug) = xAug - std::sqrt(lambda+nXAug) * PAug_sqrt.col(i);
+  for (int i=1; i<nX_aug; ++i) {
+    sigmaAug.col(i) = xAug + std::sqrt(LAMBDA+nX_aug) * PAug_sqrt.col(i);
+    sigmaAug.col(i+nX_aug) = xAug - std::sqrt(LAMBDA+nX_aug) * PAug_sqrt.col(i);
   }
   
   return sigmaAug;
 }
 
+void UKF::initialize(const MeasurementPackage& meas_package)
+{
+  switch (meas_package.sensor_type_)
+  {
+    // initialize state's position using direct measurements
+    // leave unitialized the rest (0): velocity, yaw angle, yaw rate
+  case MeasurementPackage::LASER:
+  {
+    std::cout << "State will be initialized using LIDAR measurement.\n";
+    assert(meas_package.raw_measurements_.size() == 2);
+    x(0) = meas_package.raw_measurements_(0);
+    x(1) = meas_package.raw_measurements_(1);
+
+    P(0, 0) = std_laserPx * std_laserPx;
+    P(1, 1) = std_laserPy * std_laserPy;
+    break;
+  }
+
+  case MeasurementPackage::RADAR:
+  {
+    std::cout << "State will be initialized using RADAR measurement.\n";
+    assert(meas_package.raw_measurements_.size() == 3);
+    auto range = meas_package.raw_measurements_(0);
+    auto phi = meas_package.raw_measurements_(1);
+    auto rhoDot = meas_package.raw_measurements_(2);
+    x(0) = range * std::cos(phi);
+    x(1) = range * std::sin(phi);
+    break;
+  }
+  default:
+    break;
+  }
+
+  isInitialized = true;
+  timestampPrev = meas_package.timestamp_;
+}
+
 Eigen::MatrixXd UKF::predictSigmaPoints(const Eigen::MatrixXd &sigmaAug, const double delta_t)
 {
   // create matrix with predicted sigma points as columns
-  auto Xsig_pred = Eigen::MatrixXd(nX, 2 * nXAug + 1);
+  auto Xsig_pred = Eigen::MatrixXd(nX, 2 * nX_aug + 1);
 
   // predict sigma points
-  for (int i = 0; i < 2*nXAug+1; ++i) {
+  for (int i = 0; i < 2*nX_aug+1; ++i) {
     // extract values for better readability
     double p_x = sigmaAug(0,i);
     double p_y = sigmaAug(1,i);
@@ -215,25 +234,15 @@ Eigen::MatrixXd UKF::predictSigmaPoints(const Eigen::MatrixXd &sigmaAug, const d
 
 void UKF::predictMeanCovariance(const Eigen::MatrixXd &sigmaPred)
 {
-  Eigen::VectorXd weights = Eigen::VectorXd(2*nXAug+1);
-
-  // set weights
-  double weight_0 = lambda/(lambda+nXAug);
-  weights(0) = weight_0;
-  for (int i=1; i<2*nXAug+1; ++i) {  // 2n+1 weights
-    double weight = 0.5/(nXAug+lambda);
-    weights(i) = weight;
-  }
-
   // predicted state mean
   x.fill(0.0);
-  for (int i = 0; i < 2 * nXAug + 1; ++i) {  // iterate over sigma points
+  for (int i = 0; i < 2 * nX_aug + 1; ++i) {  // iterate over sigma points
     x = x + weights(i) * sigmaPred.col(i);
   }
 
   // predicted state covariance matrix
   P.fill(0.0);
-  for (int i = 0; i < 2 * nXAug + 1; ++i) {  // iterate over sigma points
+  for (int i = 0; i < 2 * nX_aug + 1; ++i) {  // iterate over sigma points
     // state difference
     Eigen::VectorXd x_diff = sigmaPred.col(i) - x;
     // angle normalization
