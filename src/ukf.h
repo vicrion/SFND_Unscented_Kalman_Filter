@@ -42,8 +42,8 @@ protected:
 private:
   void initialize(const MeasurementPackage& meas_package);
   Eigen::MatrixXd augmentSigmaPoints();
-  Eigen::MatrixXd predictSigmaPoints(const Eigen::MatrixXd& sigmaAug, const double delta_t);
-  void predictMeanCovariance(const Eigen::MatrixXd& sigmaPred); // update internal x, P
+  void predictSigmaPoints(const Eigen::MatrixXd& sigmaAug, const double delta_t);
+  void predictMeanCovariance(); // update internal x, P
 
   bool isInitialized; // initially set to false, set to true in first call of ProcessMeasurement
   bool useLaser; // if this is false, laser measurements will be ignored (except for init)
@@ -55,6 +55,7 @@ private:
 
   Eigen::VectorXd x; // state vector: [pos1 pos2 vel_abs yaw_angle yaw_rate] in SI units and rad
   Eigen::MatrixXd P; // state covariance matrix 
+  Eigen::MatrixXd Xsigma_pred; // predicted sigma points
   Eigen::VectorXd weights;  
 
   long long time_us; // time when the state is true, in us

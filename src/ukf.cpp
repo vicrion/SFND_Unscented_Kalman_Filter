@@ -20,6 +20,7 @@ UKF::UKF()
   , lambda{3 - nX_aug}
   , x{VectorXd(nX)} // initial state vector
   , P{MatrixXd::Ones(nX, nX)} // initial covariance matrix
+  , Xsigma_pred{Eigen::MatrixXd(nX, 2 * nX_aug + 1)}
   , weights{Eigen::VectorXd(2*nX_aug+1)} // const
 
   , timestampPrev{0}
@@ -87,8 +88,8 @@ void UKF::predict(double delta_t)
 {
   // predict: x and P using augmentation
   auto Xsigma_aug = augmentSigmaPoints();
-  auto Xsigma_pred = predictSigmaPoints(Xsigma_aug, delta_t);
-  predictMeanCovariance(Xsigma_pred);
+  predictSigmaPoints(Xsigma_aug, delta_t);
+  predictMeanCovariance();
 }
 
 void UKF::updateLidar(MeasurementPackage meas_package) {
@@ -182,11 +183,8 @@ void UKF::initialize(const MeasurementPackage& meas_package)
   timestampPrev = meas_package.timestamp_;
 }
 
-Eigen::MatrixXd UKF::predictSigmaPoints(const Eigen::MatrixXd &Xsigma_aug, const double delta_t)
+void UKF::predictSigmaPoints(const Eigen::MatrixXd &Xsigma_aug, const double delta_t)
 {
-  // create matrix with predicted sigma points as columns
-  auto Xsig_pred = Eigen::MatrixXd(nX, 2 * nX_aug + 1);
-
   // predict sigma points
   for (int i = 0; i < 2*nX_aug+1; ++i) {
     // extract values for better readability
@@ -223,28 +221,27 @@ Eigen::MatrixXd UKF::predictSigmaPoints(const Eigen::MatrixXd &Xsigma_aug, const
     yawd_p = yawd_p + nu_yawdd*delta_t;
 
     // write predicted sigma point into right column
-    Xsig_pred(0,i) = px_p;
-    Xsig_pred(1,i) = py_p;
-    Xsig_pred(2,i) = v_p;
-    Xsig_pred(3,i) = yaw_p;
-    Xsig_pred(4,i) = yawd_p;
+    Xsigma_pred(0,i) = px_p;
+    Xsigma_pred(1,i) = py_p;
+    Xsigma_pred(2,i) = v_p;
+    Xsigma_pred(3,i) = yaw_p;
+    Xsigma_pred(4,i) = yawd_p;
   }
-  return Xsig_pred;
 }
 
-void UKF::predictMeanCovariance(const Eigen::MatrixXd &sigmaPred)
+void UKF::predictMeanCovariance()
 {
   // predicted state mean
   x.fill(0.0);
   for (int i = 0; i < 2 * nX_aug + 1; ++i) {  // iterate over sigma points
-    x = x + weights(i) * sigmaPred.col(i);
+    x = x + weights(i) * Xsigma_pred.col(i);
   }
 
   // predicted state covariance matrix
   P.fill(0.0);
   for (int i = 0; i < 2 * nX_aug + 1; ++i) {  // iterate over sigma points
     // state difference
-    Eigen::VectorXd x_diff = sigmaPred.col(i) - x;
+    Eigen::VectorXd x_diff = Xsigma_pred.col(i) - x;
     // angle normalization
     while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
     while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
