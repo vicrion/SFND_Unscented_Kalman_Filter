@@ -19,6 +19,7 @@ UKF::UKF(bool useLidar, bool useRadar, bool debug)
   , nX{5}
   , nX_aug{7}
   , lambda{3 - nX_aug}
+
   , x{VectorXd::Zero(nX)} // initial state vector
   , P{MatrixXd::Zero(nX, nX)} // initial covariance matrix
   , Xsigma_pred{Eigen::MatrixXd::Zero(nX, 2 * nX_aug + 1)}
@@ -26,8 +27,8 @@ UKF::UKF(bool useLidar, bool useRadar, bool debug)
 
   , timestampPrev{0}
 
-  , std_accel{9} // Process noise standard deviation longitudinal acceleration in m/s^2, TODO: optimize
-  , std_yawDDot{0.001} // Process noise standard deviation yaw acceleration in rad/s^2, TODO: optimize
+  , std_accel{11} // Process noise standard deviation longitudinal acceleration in m/s^2, TODO: optimize
+  , std_yawDDot{1.8} // Process noise standard deviation yaw acceleration in rad/s^2, TODO: optimize
   
   , std_laserPx{0.15} // const, Laser measurement noise standard deviation position1 in m
   , std_laserPy{0.15} // const, Laser measurement noise standard deviation position2 in m
@@ -36,7 +37,7 @@ UKF::UKF(bool useLidar, bool useRadar, bool debug)
   , std_radarDoppler{0.3} // const, Radar measurement noise standard deviation radius change in m/s
   , nIter{0}
 {
-  P.diagonal() << 1, 1, 1, 1, 1; // std_accel*std_accel, std_yawDDot*std_yawDDot
+  P.diagonal() << 1, 1, 1, 1, 1;
 
   // set weights
   double weight_0 = lambda/(lambda+nX_aug);
@@ -164,7 +165,7 @@ void UKF::updateLidar(MeasurementPackage meas_package)
   P = P - K * S * K.transpose();
 
   if (debug){
-    std::cout << "P=" << P << std::endl;
+    std::cout << "P=\n" << P << std::endl;
 
     double NIS = z_diff.transpose() * S.inverse() * z_diff;
      std::cout << nIter  << ": upd-lidar x = [" << x.transpose() << "], " << 
@@ -267,10 +268,11 @@ Eigen::MatrixXd UKF::augmentSigmaPoints()
   x_aug(nX_aug-2) = 0; 
   x_aug(nX_aug-1) = 0; // copy state to augmented vector
 
-  // augment P
+  // augment P with matrix Q
   auto P_aug = Eigen::MatrixXd(nX_aug, nX_aug);
   P_aug.fill(0.0);
   P_aug.topLeftCorner(nX_aug-2,nX_aug-2) = P;
+  // matrix Q - process noise
   P_aug(nX_aug-2,nX_aug-2) = std_accel*std_accel;
   P_aug(nX_aug-1,nX_aug-1) = std_yawDDot*std_yawDDot;
 
@@ -291,43 +293,31 @@ void UKF::initialize(const MeasurementPackage& meas_package)
 {
   switch (meas_package.sensor_type_)
   {
-    // initialize state's position using direct measurements
-    // leave unitialized the rest (0): velocity, yaw angle, yaw rate
   case MeasurementPackage::LASER:
   {
     if (!useLaser) return;
+
     std::cout << "State will be initialized using LIDAR measurement.\n";
     assert(meas_package.raw_measurements_.size() == 2);
     x(0) = meas_package.raw_measurements_(0);
     x(1) = meas_package.raw_measurements_(1);
-    x(2) = 0.1;
-    x(3) = 0.1;
-    x(4) = 0;
 
-    // double std_vel = 2;
-    // double std_angle = 100.0/180.0*M_PI;
-    // double std_anglerate = 0.5;
-    // P(0, 0) = std_laserPx * std_laserPx;
-    // P(1, 1) = std_laserPy * std_laserPy;
-    // P(2, 2) = std_vel*std_vel;
-    // P(3, 3) = std_angle*std_angle;
-    // P(4, 4) = std_anglerate*std_anglerate;
+    P(0, 0) = std_laserPx * std_laserPx;
+    P(1, 1) = std_laserPy * std_laserPy;
     break;
   }
 
   case MeasurementPackage::RADAR:
   {
     if (!useRadar) return;
+
     std::cout << "State will be initialized using RADAR measurement.\n";
     assert(meas_package.raw_measurements_.size() == 3);
-    auto range = meas_package.raw_measurements_(0);
+    auto r = meas_package.raw_measurements_(0);
     auto phi = meas_package.raw_measurements_(1);
-    auto rhoDot = meas_package.raw_measurements_(2);
-    x(0) = range * std::cos(phi);
-    x(1) = range * std::sin(phi);
-    x(2) = 0.1;
-    x(3) = 0.1;
-    x(4) = 0;
+    auto rDot = meas_package.raw_measurements_(2);
+    x(0) = r * std::cos(phi);
+    x(1) = r * std::sin(phi);
     break;
   }
   default: 
@@ -337,13 +327,17 @@ void UKF::initialize(const MeasurementPackage& meas_package)
     return;
   }
   }
+  // just some random values for now, so they are not zeros
+  x(2) = 1;
+  x(3) = 0.1;
+  x(4) = 0;
 
   isInitialized = true;
   timestampPrev = meas_package.timestamp_;
 
   if (debug){
-    std::cout << nIter  << ": initialized x = [" << x.transpose() << "].\n";
-    std::cout << "P=" << P << std::endl;
+    std::cout << nIter  << ": initialized x = [" << x.transpose() << "], using meas=[" << meas_package.raw_measurements_.transpose() << "].\n";
+    std::cout << "initialized P=\n" << P << std::endl;
   }
 }
 
