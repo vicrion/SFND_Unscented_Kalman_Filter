@@ -26,13 +26,15 @@ UKF::UKF(bool useLidar, bool useRadar, bool debug)
 
   , timestampPrev{0}
 
-  , std_accel{10} // Process noise standard deviation longitudinal acceleration in m/s^2, TODO: optimize
+  , std_accel{9} // Process noise standard deviation longitudinal acceleration in m/s^2, TODO: optimize
   , std_yawDDot{0.1} // Process noise standard deviation yaw acceleration in rad/s^2, TODO: optimize
+  
   , std_laserPx{0.15} // const, Laser measurement noise standard deviation position1 in m
   , std_laserPy{0.15} // const, Laser measurement noise standard deviation position2 in m
   , std_radarRange{0.3} // const, Radar measurement noise standard deviation radius in m
   , std_radarPhi{0.03} // const, Radar measurement noise standard deviation angle in rad
   , std_radarDoppler{0.3} // const, Radar measurement noise standard deviation radius change in m/s
+  , nIter{0}
 {
   // P.diagonal() << 1, 1, 1, 1, 1; // std_accel*std_accel, std_yawDDot*std_yawDDot
 
@@ -49,6 +51,7 @@ UKF::~UKF() {}
 
 void UKF::step(MeasurementPackage meas_package) 
 {
+  nIter++;
   // UKF: initialize x, P using package data and std values
   if (!isInitialized){
     initialize(meas_package);
@@ -98,7 +101,7 @@ void UKF::predict(double delta_t)
   predictMeanCovariance();
 
   if (debug){
-    std::cout << "predicted x = [" << x.transpose() << "].\n";
+    std::cout << nIter << ": predicted x = [" << x.transpose() << "].\n";
   }
 }
 
@@ -166,7 +169,7 @@ void UKF::updateLidar(MeasurementPackage meas_package)
   }
 
   if (debug){
-     std::cout << "upd-lidar x = [" << x.transpose() << "].\n";
+     std::cout << nIter  << ": upd-lidar x = [" << x.transpose() << "].\n";
   }
 }
 
@@ -187,9 +190,13 @@ void UKF::updateRadar(MeasurementPackage meas_package)
     double v2 = sin(yaw)*v;
 
     // measurement (radar) model
-    Zsig(0,i) = sqrt(p_x*p_x + p_y*p_y);                       // r
+    auto dist = sqrt(p_x*p_x + p_y*p_y);
+    Zsig(0,i) = dist;                       // r
     Zsig(1,i) = atan2(p_y,p_x);                                // phi
-    Zsig(2,i) = (p_x*v1 + p_y*v2) / sqrt(p_x*p_x + p_y*p_y);   // r_dot
+    if (std::fabs(dist) > 1e-3)
+      Zsig(2, i) = (p_x * v1 + p_y * v2) / dist; // r_dot
+    else
+      Zsig(2, i) = 0;
   }
 
   // mean predicted measurement (of transformed points)
@@ -250,7 +257,7 @@ void UKF::updateRadar(MeasurementPackage meas_package)
     std::cout << "Radar NIS: " << NIS << std::endl;
   }
   if (debug){
-     std::cout << "upd-radar x = [" << x.transpose() << "].\n";
+     std::cout << nIter  << ": upd-radar x = [" << x.transpose() << "].\n";
   }
 }
 
@@ -268,14 +275,25 @@ Eigen::MatrixXd UKF::augmentSigmaPoints()
   P_aug.topLeftCorner(nX_aug-2,nX_aug-2) = P;
   P_aug(nX_aug-2,nX_aug-2) = std_accel*std_accel;
   P_aug(nX_aug-1,nX_aug-1) = std_yawDDot*std_yawDDot;
+  if (debug){
+    std::cout << "P_aug=\n" << P_aug << std::endl;
+  }
 
   // extract sigma points using augmentation
   Eigen::MatrixXd P_aug_sqrt = P_aug.llt().matrixL(); // square root of augmented P
+  if (debug){
+    std::cout << "P_aug_sqrt=\n" << P_aug_sqrt << std::endl;
+  }
   auto Xsigma_aug = Eigen::MatrixXd(nX_aug, 2*nX_aug+1); 
   Xsigma_aug.col(0) = x_aug;
-  for (int i=1; i<nX_aug; ++i) {
-    Xsigma_aug.col(i) = x_aug + std::sqrt(lambda+nX_aug) * P_aug_sqrt.col(i);
-    Xsigma_aug.col(i+nX_aug) = x_aug - std::sqrt(lambda+nX_aug) * P_aug_sqrt.col(i);
+  auto mult = std::sqrt(lambda+nX_aug);
+  for (int i=0; i<nX_aug; ++i) {
+    Xsigma_aug.col(i+1) = x_aug + mult * P_aug_sqrt.col(i);
+    Xsigma_aug.col(i+1+nX_aug) = x_aug - mult * P_aug_sqrt.col(i);
+  }
+  if (debug){
+    std::cout << "mult=" << mult << std::endl;
+    std::cout << "Xsim_aug=\n" << Xsigma_aug << std::endl;
   }
   
   return Xsigma_aug;
@@ -294,6 +312,9 @@ void UKF::initialize(const MeasurementPackage& meas_package)
     assert(meas_package.raw_measurements_.size() == 2);
     x(0) = meas_package.raw_measurements_(0);
     x(1) = meas_package.raw_measurements_(1);
+    x(2) = 0.1;
+    x(3) = 0.1;
+    x(4) = 0;
 
     P(0, 0) = std_laserPx * std_laserPx;
     P(1, 1) = std_laserPy * std_laserPy;
@@ -310,6 +331,9 @@ void UKF::initialize(const MeasurementPackage& meas_package)
     auto rhoDot = meas_package.raw_measurements_(2);
     x(0) = range * std::cos(phi);
     x(1) = range * std::sin(phi);
+    x(2) = 0.1;
+    x(3) = 0.1;
+    x(4) = 0;
     break;
   }
   default: 
@@ -324,7 +348,7 @@ void UKF::initialize(const MeasurementPackage& meas_package)
   timestampPrev = meas_package.timestamp_;
 
   if (debug){
-    std::cout << "initialized x = [" << x.transpose() << "].\n";
+    std::cout << nIter  << ": initialized x = [" << x.transpose() << "].\n";
   }
 }
 
@@ -345,7 +369,7 @@ void UKF::predictSigmaPoints(const Eigen::MatrixXd &Xsigma_aug, const double del
     double px_p, py_p;
 
     // avoid division by zero
-    if (std::fabs(yawd) > 0.001) {
+    if (std::fabs(yawd) > 1e-3) {
         px_p = p_x + v/yawd * ( std::sin(yaw + yawd*delta_t) - std::sin(yaw));
         py_p = p_y + v/yawd * ( std::cos(yaw) - std::cos(yaw+yawd*delta_t) );
     } else {

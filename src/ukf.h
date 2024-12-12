@@ -71,6 +71,7 @@ private:
   double std_radarDoppler; // Radar measurement noise standard deviation radius change in m/s
 
   static double wraptopi(const double value); // angle normalization
+  int nIter;
 };
 
 #endif  // UKF_H
