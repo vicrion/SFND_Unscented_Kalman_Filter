@@ -20,7 +20,7 @@ public:
 	// Parameters 
 	// --------------------------------
 	// Set which cars to track with UKF
-	std::vector<bool> trackCars = {true,true,true};
+	std::vector<bool> trackCars = {true,false,false};
 	// Visualize sensor measurements
 	bool visualize_lidar = true;
 	bool visualize_radar = true;
@@ -52,7 +52,7 @@ public:
 		car1.setInstructions(car1_instructions);
 		if( trackCars[0] )
 		{
-			UKF ukf1;
+			UKF ukf1(false, true, true);
 			car1.setUKF(ukf1);
 		}
 		traffic.push_back(car1);

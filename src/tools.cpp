@@ -66,6 +66,7 @@ rmarker Tools::radarSense(Car& car, Car ego, pcl::visualization::PCLVisualizer::
 void Tools::ukfResults(Car car, pcl::visualization::PCLVisualizer::Ptr& viewer, double time, int steps)
 {
 	UKF ukf = car.ukf;
+	ukf.debug = false;
 	viewer->addSphere(pcl::PointXYZ(ukf.getState()[0],ukf.getState()[1],3.5), 0.5, 0, 1, 0,car.name+"_ukf");
 	viewer->addArrow(pcl::PointXYZ(ukf.getState()[0], ukf.getState()[1],3.5), 
 		pcl::PointXYZ(ukf.getState()[0]+ukf.getState()[2]*cos(ukf.getState()[3]),

@@ -8,6 +8,7 @@ class UKF {
  public:
   UKF(bool useLidar = true, bool useRadar = true, bool debug = false);
   virtual ~UKF();
+  bool debug;
 
   /**
    * ProcessMeasurement
@@ -46,7 +47,6 @@ private:
   bool isInitialized; // initially set to false, set to true in first call of ProcessMeasurement
   bool useLaser; // if this is false, laser measurements will be ignored (except for init)
   bool useRadar; // if this is false, radar measurements will be ignored (except for init)
-  bool debug;
 
   int nX; // State dimension
   int nX_aug; // Augmented state dimension

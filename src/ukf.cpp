@@ -19,10 +19,10 @@ UKF::UKF(bool useLidar, bool useRadar, bool debug)
   , nX{5}
   , nX_aug{7}
   , lambda{3 - nX_aug}
-  , x{VectorXd(nX)} // initial state vector
+  , x{VectorXd::Zero(nX)} // initial state vector
   , P{MatrixXd::Ones(nX, nX)} // initial covariance matrix
-  , Xsigma_pred{Eigen::MatrixXd(nX, 2 * nX_aug + 1)}
-  , weights{Eigen::VectorXd(2*nX_aug+1)} // const
+  , Xsigma_pred{Eigen::MatrixXd::Zero(nX, 2 * nX_aug + 1)}
+  , weights{Eigen::VectorXd::Zero(2*nX_aug+1)} // const
 
   , timestampPrev{0}
 
@@ -59,17 +59,22 @@ void UKF::step(MeasurementPackage meas_package)
   timestampPrev = meas_package.timestamp_;
 
   // UKF: predict and update
-  predict(deltaT);
   switch (meas_package.sensor_type_)
   {
   case MeasurementPackage::LASER:
   {
-    updateLidar(meas_package);
+    if (useLaser){
+      predict(deltaT);
+      updateLidar(meas_package);
+    }
     break;
   }
   case MeasurementPackage::RADAR:
   {
-    updateRadar(meas_package);
+    if (useRadar){
+      predict(deltaT);
+      updateRadar(meas_package);
+    }
     break;
   }
   default:
@@ -91,6 +96,10 @@ void UKF::predict(double delta_t)
   auto Xsigma_aug = augmentSigmaPoints();
   predictSigmaPoints(Xsigma_aug, delta_t);
   predictMeanCovariance();
+
+  if (debug){
+    std::cout << "predicted x = [" << x.transpose() << "].\n";
+  }
 }
 
 void UKF::updateLidar(MeasurementPackage meas_package) 
@@ -155,7 +164,10 @@ void UKF::updateLidar(MeasurementPackage meas_package)
     double NIS = z_diff.transpose() * S.inverse() * z_diff;
     std::cout << "Lidar NIS: " << NIS << std::endl;
   }
-  
+
+  if (debug){
+     std::cout << "upd-lidar x = [" << x.transpose() << "].\n";
+  }
 }
 
 void UKF::updateRadar(MeasurementPackage meas_package) 
@@ -237,6 +249,9 @@ void UKF::updateRadar(MeasurementPackage meas_package)
     double NIS = z_diff.transpose() * S.inverse() * z_diff;
     std::cout << "Radar NIS: " << NIS << std::endl;
   }
+  if (debug){
+     std::cout << "upd-radar x = [" << x.transpose() << "].\n";
+  }
 }
 
 Eigen::MatrixXd UKF::augmentSigmaPoints()
@@ -274,6 +289,7 @@ void UKF::initialize(const MeasurementPackage& meas_package)
     // leave unitialized the rest (0): velocity, yaw angle, yaw rate
   case MeasurementPackage::LASER:
   {
+    if (!useLaser) return;
     std::cout << "State will be initialized using LIDAR measurement.\n";
     assert(meas_package.raw_measurements_.size() == 2);
     x(0) = meas_package.raw_measurements_(0);
@@ -286,6 +302,7 @@ void UKF::initialize(const MeasurementPackage& meas_package)
 
   case MeasurementPackage::RADAR:
   {
+    if (!useRadar) return;
     std::cout << "State will be initialized using RADAR measurement.\n";
     assert(meas_package.raw_measurements_.size() == 3);
     auto range = meas_package.raw_measurements_(0);
@@ -295,12 +312,20 @@ void UKF::initialize(const MeasurementPackage& meas_package)
     x(1) = range * std::sin(phi);
     break;
   }
-  default:
-    break;
+  default: 
+  {
+    std::cerr << "Failed to initialize: unkown sensor type.\n";
+    isInitialized = false;
+    return;
+  }
   }
 
   isInitialized = true;
   timestampPrev = meas_package.timestamp_;
+
+  if (debug){
+    std::cout << "initialized x = [" << x.transpose() << "].\n";
+  }
 }
 
 void UKF::predictSigmaPoints(const Eigen::MatrixXd &Xsigma_aug, const double delta_t)
