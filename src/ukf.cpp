@@ -162,14 +162,10 @@ void UKF::updateLidar(MeasurementPackage meas_package)
   x = x + K * z_diff;
   P = P - K * S * K.transpose();
 
-  // calculate lidar NIS
-  if (S.determinant() > 1e-6) {
-    double NIS = z_diff.transpose() * S.inverse() * z_diff;
-    std::cout << "Lidar NIS: " << NIS << std::endl;
-  }
-
   if (debug){
-     std::cout << nIter  << ": upd-lidar x = [" << x.transpose() << "].\n";
+    double NIS = z_diff.transpose() * S.inverse() * z_diff;
+     std::cout << nIter  << ": upd-lidar x = [" << x.transpose() << "], " << 
+      "meas=[" << z.transpose() << "], NIS=" << NIS << ".\n";
   }
 }
 
@@ -186,15 +182,15 @@ void UKF::updateRadar(MeasurementPackage meas_package)
     double v  = Xsigma_pred(2,i);
     double yaw = Xsigma_pred(3,i);
 
-    double v1 = cos(yaw)*v;
-    double v2 = sin(yaw)*v;
+    double vx = cos(yaw)*v;
+    double vy = sin(yaw)*v;
 
     // measurement (radar) model
     auto dist = sqrt(p_x*p_x + p_y*p_y);
-    Zsig(0,i) = dist;                       // r
-    Zsig(1,i) = atan2(p_y,p_x);                                // phi
+    Zsig(0,i) = dist;             // r
+    Zsig(1,i) = atan2(p_y, p_x);  // phi
     if (std::fabs(dist) > 1e-3)
-      Zsig(2, i) = (p_x * v1 + p_y * v2) / dist; // r_dot
+      Zsig(2, i) = (p_x*vx + p_y*vy) / dist; // r_dot
     else
       Zsig(2, i) = 0;
   }
@@ -204,6 +200,7 @@ void UKF::updateRadar(MeasurementPackage meas_package)
   for (int i=0; i < 2*nX_aug+1; ++i) {
     z_pred = z_pred + weights(i) * Zsig.col(i);
   }
+  z_pred(1) = wraptopi(z_pred(1));
 
   // innovation covariance matrix S
   MatrixXd S = MatrixXd(n_z,n_z); // measurement covariance
@@ -251,13 +248,11 @@ void UKF::updateRadar(MeasurementPackage meas_package)
   x = x + K * z_diff;
   P = P - K*S*K.transpose();
 
-  // calculate radar NIS
-  if (S.determinant() > 1e-6) {
-    double NIS = z_diff.transpose() * S.inverse() * z_diff;
-    std::cout << "Radar NIS: " << NIS << std::endl;
-  }
   if (debug){
-     std::cout << nIter  << ": upd-radar x = [" << x.transpose() << "].\n";
+    double NIS = z_diff.transpose() * S.inverse() * z_diff; // calculate radar NIS
+     std::cout << nIter  << ": upd-radar x = [" << x.transpose() << 
+      "], meas=[" << z[0]*std::cos(z[1]) << ", " << z[0]*std::sin(z[1]) << ", " << z[2] << 
+      "], polar=[" << z[0] << ", " << z[1] << "], NIS=" << NIS << ".\n";
   }
 }
 
@@ -275,27 +270,17 @@ Eigen::MatrixXd UKF::augmentSigmaPoints()
   P_aug.topLeftCorner(nX_aug-2,nX_aug-2) = P;
   P_aug(nX_aug-2,nX_aug-2) = std_accel*std_accel;
   P_aug(nX_aug-1,nX_aug-1) = std_yawDDot*std_yawDDot;
-  if (debug){
-    std::cout << "P_aug=\n" << P_aug << std::endl;
-  }
 
   // extract sigma points using augmentation
   Eigen::MatrixXd P_aug_sqrt = P_aug.llt().matrixL(); // square root of augmented P
-  if (debug){
-    std::cout << "P_aug_sqrt=\n" << P_aug_sqrt << std::endl;
-  }
   auto Xsigma_aug = Eigen::MatrixXd(nX_aug, 2*nX_aug+1); 
   Xsigma_aug.col(0) = x_aug;
-  auto mult = std::sqrt(lambda+nX_aug);
+  const auto mult = std::sqrt(lambda+nX_aug);
   for (int i=0; i<nX_aug; ++i) {
     Xsigma_aug.col(i+1) = x_aug + mult * P_aug_sqrt.col(i);
     Xsigma_aug.col(i+1+nX_aug) = x_aug - mult * P_aug_sqrt.col(i);
   }
-  if (debug){
-    std::cout << "mult=" << mult << std::endl;
-    std::cout << "Xsim_aug=\n" << Xsigma_aug << std::endl;
-  }
-  
+
   return Xsigma_aug;
 }
 

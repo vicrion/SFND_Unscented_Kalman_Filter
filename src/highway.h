@@ -52,7 +52,7 @@ public:
 		car1.setInstructions(car1_instructions);
 		if( trackCars[0] )
 		{
-			UKF ukf1(false, true, true);
+			UKF ukf1(true, false, true);
 			car1.setUKF(ukf1);
 		}
 		traffic.push_back(car1);
