@@ -27,8 +27,8 @@ UKF::UKF(bool useLidar, bool useRadar, bool debug)
 
   , timestampPrev{0}
 
-  , std_accel{11} // Process noise standard deviation longitudinal acceleration in m/s^2, TODO: optimize
-  , std_yawDDot{1.8} // Process noise standard deviation yaw acceleration in rad/s^2, TODO: optimize
+  , std_accel{10} // Process noise standard deviation longitudinal acceleration in m/s^2, TODO: optimize
+  , std_yawDDot{1.5} // Process noise standard deviation yaw acceleration in rad/s^2, TODO: optimize
   
   , std_laserPx{0.15} // const, Laser measurement noise standard deviation position1 in m
   , std_laserPy{0.15} // const, Laser measurement noise standard deviation position2 in m
@@ -37,7 +37,8 @@ UKF::UKF(bool useLidar, bool useRadar, bool debug)
   , std_radarDoppler{0.3} // const, Radar measurement noise standard deviation radius change in m/s
   , nIter{0}
 {
-  P.diagonal() << 1, 1, 1, 1, 1;
+  // state uncertainties: x, y, vel, yaw, yaw_rate
+  P.diagonal() << 0.5, 0.5, 0.5, 0.005, 0.05;
 
   // set weights
   double weight_0 = lambda/(lambda+nX_aug);

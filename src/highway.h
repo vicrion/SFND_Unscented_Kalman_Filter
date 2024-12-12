@@ -1,6 +1,8 @@
 /* \author Aaron Brown */
 // Handle logic for creating traffic on highway and animating it
 
+#include <iostream>
+
 #include "render/render.h"
 #include "sensors/lidar.h"
 #include "tools.h"
@@ -140,6 +142,9 @@ public:
     			double v2 = sin(yaw)*v;
 				estimate << traffic[i].ukf.getState()[0], traffic[i].ukf.getState()[1], v1, v2;
 				tools.estimations.push_back(estimate);
+				if (traffic[i].ukf.debug){
+					std::cout << "GT=[" << gt.transpose() << "].\n";
+				}
 	
 			}
 		}
