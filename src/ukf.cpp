@@ -20,14 +20,14 @@ UKF::UKF(bool useLidar, bool useRadar, bool debug)
   , nX_aug{7}
   , lambda{3 - nX_aug}
   , x{VectorXd::Zero(nX)} // initial state vector
-  , P{MatrixXd::Ones(nX, nX)} // initial covariance matrix
+  , P{MatrixXd::Zero(nX, nX)} // initial covariance matrix
   , Xsigma_pred{Eigen::MatrixXd::Zero(nX, 2 * nX_aug + 1)}
   , weights{Eigen::VectorXd::Zero(2*nX_aug+1)} // const
 
   , timestampPrev{0}
 
   , std_accel{9} // Process noise standard deviation longitudinal acceleration in m/s^2, TODO: optimize
-  , std_yawDDot{0.1} // Process noise standard deviation yaw acceleration in rad/s^2, TODO: optimize
+  , std_yawDDot{0.001} // Process noise standard deviation yaw acceleration in rad/s^2, TODO: optimize
   
   , std_laserPx{0.15} // const, Laser measurement noise standard deviation position1 in m
   , std_laserPy{0.15} // const, Laser measurement noise standard deviation position2 in m
@@ -36,7 +36,7 @@ UKF::UKF(bool useLidar, bool useRadar, bool debug)
   , std_radarDoppler{0.3} // const, Radar measurement noise standard deviation radius change in m/s
   , nIter{0}
 {
-  // P.diagonal() << 1, 1, 1, 1, 1; // std_accel*std_accel, std_yawDDot*std_yawDDot
+  P.diagonal() << 1, 1, 1, 1, 1; // std_accel*std_accel, std_yawDDot*std_yawDDot
 
   // set weights
   double weight_0 = lambda/(lambda+nX_aug);
@@ -116,6 +116,7 @@ void UKF::updateLidar(MeasurementPackage meas_package)
     Zsig(0, i) = Xsigma_pred(0, i); // px
     Zsig(1, i) = Xsigma_pred(1, i); // py
   }
+  
   Eigen::VectorXd z_pred = Eigen::VectorXd(n_z);
   z_pred.fill(0.0);
   for (int i = 0; i < 2 * nX_aug + 1; ++i)
@@ -163,6 +164,8 @@ void UKF::updateLidar(MeasurementPackage meas_package)
   P = P - K * S * K.transpose();
 
   if (debug){
+    std::cout << "P=" << P << std::endl;
+
     double NIS = z_diff.transpose() * S.inverse() * z_diff;
      std::cout << nIter  << ": upd-lidar x = [" << x.transpose() << "], " << 
       "meas=[" << z.transpose() << "], NIS=" << NIS << ".\n";
@@ -301,8 +304,14 @@ void UKF::initialize(const MeasurementPackage& meas_package)
     x(3) = 0.1;
     x(4) = 0;
 
-    P(0, 0) = std_laserPx * std_laserPx;
-    P(1, 1) = std_laserPy * std_laserPy;
+    // double std_vel = 2;
+    // double std_angle = 100.0/180.0*M_PI;
+    // double std_anglerate = 0.5;
+    // P(0, 0) = std_laserPx * std_laserPx;
+    // P(1, 1) = std_laserPy * std_laserPy;
+    // P(2, 2) = std_vel*std_vel;
+    // P(3, 3) = std_angle*std_angle;
+    // P(4, 4) = std_anglerate*std_anglerate;
     break;
   }
 
@@ -334,6 +343,7 @@ void UKF::initialize(const MeasurementPackage& meas_package)
 
   if (debug){
     std::cout << nIter  << ": initialized x = [" << x.transpose() << "].\n";
+    std::cout << "P=" << P << std::endl;
   }
 }
 
