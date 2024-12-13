@@ -34,7 +34,6 @@ public:
 
 	Highway(pcl::visualization::PCLVisualizer::Ptr& viewer)
 	{
-
 		tools = Tools();
 	
 		egoCar = Car(Vect3(0, 0, 0), Vect3(4, 2, 2), Color(0, 1, 0), 0, 0, 2, "egoCar");
@@ -54,7 +53,7 @@ public:
 		car1.setInstructions(car1_instructions);
 		if( trackCars[0] )
 		{
-			UKF ukf1(true, true, false);
+			UKF ukf1(true, true, true);
 			car1.setUKF(ukf1);
 		}
 		traffic.push_back(car1);
