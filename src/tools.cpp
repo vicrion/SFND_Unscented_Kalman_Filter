@@ -68,9 +68,9 @@ void Tools::ukfResults(Car car, pcl::visualization::PCLVisualizer::Ptr& viewer, 
 	UKF ukf = car.ukf;
 	ukf.debug = false;
 	viewer->addSphere(pcl::PointXYZ(ukf.getState()[0],ukf.getState()[1],3.5), 0.5, 0, 1, 0,car.name+"_ukf");
-	viewer->addArrow(pcl::PointXYZ(ukf.getState()[0], ukf.getState()[1],3.5), 
-		pcl::PointXYZ(ukf.getState()[0]+ukf.getState()[2]*cos(ukf.getState()[3]),
-		ukf.getState()[1]+ukf.getState()[2]*sin(ukf.getState()[3]),3.5), 0, 1, 0, car.name+"_ukf_vel");
+	// viewer->addArrow(pcl::PointXYZ(ukf.getState()[0], ukf.getState()[1],3.5), 
+	// 	pcl::PointXYZ(ukf.getState()[0]+ukf.getState()[2]*cos(ukf.getState()[3]),
+	// 	ukf.getState()[1]+ukf.getState()[2]*sin(ukf.getState()[3]),3.5), 0, 1, 0, car.name+"_ukf_vel");
 	if(time > 0)
 	{
 		double dt = time/steps;
@@ -79,11 +79,11 @@ void Tools::ukfResults(Car car, pcl::visualization::PCLVisualizer::Ptr& viewer, 
 		{
 			ukf.predict(dt);
 			viewer->addSphere(pcl::PointXYZ(ukf.getState()[0],ukf.getState()[1],3.5), 0.5, 0, 1, 0,car.name+"_ukf"+std::to_string(ct));
-			viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 1.0-0.8*(ct/time), car.name+"_ukf"+std::to_string(ct));
-			viewer->addArrow(pcl::PointXYZ(ukf.getState()[0], ukf.getState()[1],3.5), 
-				pcl::PointXYZ(ukf.getState()[0]+ukf.getState()[2]*cos(ukf.getState()[3]),ukf.getState()[1]+ukf.getState()[2]*sin(ukf.getState()[3]),3.5), 
-				0, 1, 0, car.name+"_ukf_vel"+std::to_string(ct));
-			viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 1.0-0.8*(ct/time), car.name+"_ukf_vel"+std::to_string(ct));
+			// viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 1.0-0.8*(ct/time), car.name+"_ukf"+std::to_string(ct));
+			// viewer->addArrow(pcl::PointXYZ(ukf.getState()[0], ukf.getState()[1],3.5), 
+			// 	pcl::PointXYZ(ukf.getState()[0]+ukf.getState()[2]*cos(ukf.getState()[3]),ukf.getState()[1]+ukf.getState()[2]*sin(ukf.getState()[3]),3.5), 
+			// 	0, 1, 0, car.name+"_ukf_vel"+std::to_string(ct));
+			// viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 1.0-0.8*(ct/time), car.name+"_ukf_vel"+std::to_string(ct));
 			ct += dt;
 		}
 	}

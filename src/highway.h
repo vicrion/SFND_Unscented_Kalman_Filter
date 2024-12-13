@@ -28,8 +28,8 @@ public:
 	bool visualize_radar = true;
 	bool visualize_pcd = false;
 	// Predict path in the future using UKF
-	double projectedTime = 2;
-	int projectedSteps = 20;
+	double projectedTime = 1;
+	int projectedSteps = 5;
 	// --------------------------------
 
 	Highway(pcl::visualization::PCLVisualizer::Ptr& viewer)
@@ -133,7 +133,15 @@ public:
 				tools.ground_truth.push_back(gt);
 				tools.lidarSense(traffic[i], viewer, timestamp, visualize_lidar);
 				tools.radarSense(traffic[i], egoCar, viewer, timestamp, visualize_radar);
+				if (traffic[i].ukf.debug){
+					std::cout << "Getting UKF results. ";
+				}
+
 				tools.ukfResults(traffic[i],viewer, projectedTime, projectedSteps);
+				if (traffic[i].ukf.debug){
+					std::cout << "Done.\n";
+				}
+
 				VectorXd estimate(4);
 				double v  = traffic[i].ukf.getState()(2);
     			double yaw = traffic[i].ukf.getState()(3);
