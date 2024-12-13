@@ -1,6 +1,8 @@
 /* \author Aaron Brown */
 // Handle logic for creating traffic on highway and animating it
 
+#include <iostream>
+
 #include "render/render.h"
 #include "sensors/lidar.h"
 #include "tools.h"
@@ -26,8 +28,8 @@ public:
 	bool visualize_radar = true;
 	bool visualize_pcd = false;
 	// Predict path in the future using UKF
-	double projectedTime = 0;
-	int projectedSteps = 0;
+	double projectedTime = 2;
+	int projectedSteps = 20;
 	// --------------------------------
 
 	Highway(pcl::visualization::PCLVisualizer::Ptr& viewer)
@@ -52,7 +54,7 @@ public:
 		car1.setInstructions(car1_instructions);
 		if( trackCars[0] )
 		{
-			UKF ukf1;
+			UKF ukf1(true, true, false);
 			car1.setUKF(ukf1);
 		}
 		traffic.push_back(car1);
@@ -134,12 +136,15 @@ public:
 				tools.radarSense(traffic[i], egoCar, viewer, timestamp, visualize_radar);
 				tools.ukfResults(traffic[i],viewer, projectedTime, projectedSteps);
 				VectorXd estimate(4);
-				double v  = traffic[i].ukf.x_(2);
-    			double yaw = traffic[i].ukf.x_(3);
+				double v  = traffic[i].ukf.getState()(2);
+    			double yaw = traffic[i].ukf.getState()(3);
     			double v1 = cos(yaw)*v;
     			double v2 = sin(yaw)*v;
-				estimate << traffic[i].ukf.x_[0], traffic[i].ukf.x_[1], v1, v2;
+				estimate << traffic[i].ukf.getState()[0], traffic[i].ukf.getState()[1], v1, v2;
 				tools.estimations.push_back(estimate);
+				if (traffic[i].ukf.debug){
+					std::cout << "GT=[" << gt.transpose() << "].\n";
+				}
 	
 			}
 		}
