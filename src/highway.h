@@ -134,7 +134,10 @@ public:
 				tools.lidarSense(traffic[i], viewer, timestamp, visualize_lidar);
 				tools.radarSense(traffic[i], egoCar, viewer, timestamp, visualize_radar);
 				if (traffic[i].ukf.debug){
-					std::cout << "Getting UKF results. ";
+					std::cout << "GT=[" << gt.transpose() << "].\n";
+				}
+				if (traffic[i].ukf.debug){
+					std::cout << "Viz UKF results... ";
 				}
 
 				tools.ukfResults(traffic[i],viewer, projectedTime, projectedSteps);
@@ -149,9 +152,6 @@ public:
     			double v2 = sin(yaw)*v;
 				estimate << traffic[i].ukf.getState()[0], traffic[i].ukf.getState()[1], v1, v2;
 				tools.estimations.push_back(estimate);
-				if (traffic[i].ukf.debug){
-					std::cout << "GT=[" << gt.transpose() << "].\n";
-				}
 	
 			}
 		}
