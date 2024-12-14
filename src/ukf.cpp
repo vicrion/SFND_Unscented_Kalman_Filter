@@ -88,6 +88,10 @@ void UKF::step(MeasurementPackage meas_package)
     break;
   }
   }
+  if (debug){
+    std::cout << nIter << ": step completed OK.\n";
+  }
+  
 }
 
 Eigen::VectorXd UKF::getState() const

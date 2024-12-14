@@ -28,13 +28,12 @@ public:
 	bool visualize_radar = true;
 	bool visualize_pcd = false;
 	// Predict path in the future using UKF
-	double projectedTime = 2;
-	int projectedSteps = 20;
+	double projectedTime = 1;
+	int projectedSteps = 5;
 	// --------------------------------
 
 	Highway(pcl::visualization::PCLVisualizer::Ptr& viewer)
 	{
-
 		tools = Tools();
 	
 		egoCar = Car(Vect3(0, 0, 0), Vect3(4, 2, 2), Color(0, 1, 0), 0, 0, 2, "egoCar");
@@ -54,7 +53,7 @@ public:
 		car1.setInstructions(car1_instructions);
 		if( trackCars[0] )
 		{
-			UKF ukf1(true, true, false);
+			UKF ukf1(true, true, true);
 			car1.setUKF(ukf1);
 		}
 		traffic.push_back(car1);
@@ -134,7 +133,18 @@ public:
 				tools.ground_truth.push_back(gt);
 				tools.lidarSense(traffic[i], viewer, timestamp, visualize_lidar);
 				tools.radarSense(traffic[i], egoCar, viewer, timestamp, visualize_radar);
+				if (traffic[i].ukf.debug){
+					std::cout << "GT=[" << gt.transpose() << "].\n";
+				}
+				if (traffic[i].ukf.debug){
+					std::cout << "Viz UKF results... ";
+				}
+
 				tools.ukfResults(traffic[i],viewer, projectedTime, projectedSteps);
+				if (traffic[i].ukf.debug){
+					std::cout << "Done.\n";
+				}
+
 				VectorXd estimate(4);
 				double v  = traffic[i].ukf.getState()(2);
     			double yaw = traffic[i].ukf.getState()(3);
@@ -142,9 +152,6 @@ public:
     			double v2 = sin(yaw)*v;
 				estimate << traffic[i].ukf.getState()[0], traffic[i].ukf.getState()[1], v1, v2;
 				tools.estimations.push_back(estimate);
-				if (traffic[i].ukf.debug){
-					std::cout << "GT=[" << gt.transpose() << "].\n";
-				}
 	
 			}
 		}
